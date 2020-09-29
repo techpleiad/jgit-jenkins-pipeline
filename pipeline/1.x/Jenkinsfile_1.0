@@ -1,0 +1,154 @@
+#!/usr/bin/env groovy
+
+
+pipeline {
+
+    agent any
+    parameters {
+        choice(name: 'choice', choices: ['Start-Release', 'End-Release'], description: 'Select Mode')
+        booleanParam(name: 'debugmode', defaultValue: false, description: 'When debug mode is On, JGIT command will not be executed')
+        text(name: 'GitRepos', defaultValue: "${JGIT_PIPELINE_DEFAULT_GIT_REPOS}", description: 'Enter the git repos, add a semicolon after each repo')
+        text(name: 'EmailIds', defaultValue: "${JGIT_PIPELINE_DEFAULT_NOTIFICATION_EMAIL}", description: 'Enter the git repos, add a semicolon after each repo')
+        string(name: 'source', defaultValue: 'dev', description: 'Source Branch of comparison')
+        // defaultValue to be changed to dev in source and master in target. default value to be set to a company git repo in gitRepos ending by semicolon
+        string(name: 'target', defaultValue: 'master', description: 'Target branch of comparison')
+    }
+
+
+    stages {
+
+        stage('Operation') {
+
+            steps {
+
+                script {
+
+                    def basePath = getBaseScriptsPath()
+                    def baseScriptsPath = basePath + "/src/main/groovy/"
+                    echo "Base script path ${baseScriptsPath}"
+
+                    def inputSupport = load baseScriptsPath + "InputSupport.groovy"
+
+                    def gitRepos = inputSupport.parseInputData(params.GitRepos)
+                    def emails = inputSupport.parseInputData(params.EmailIds)
+
+                    def gitOperation = load baseScriptsPath + "GitOperation.Groovy"
+
+                    def buildVersion = load baseScriptsPath + "BuildVersion.groovy"
+
+                    if (params.choice == 'Start-Release') {
+
+                        for (gitRepo in gitRepos) {
+
+                            echo "===================== Checking out " + gitRepo + " ====================="
+                            gitOperation.gitCheckout(gitRepo, 'dev')
+
+                            def codeDifference = gitOperation.checkCodeDifferenceBetweenGivenBranches()
+                            echo "Code difference are eligible for release " + codeDifference
+
+                            if (codeDifference == false) {
+                                echo "Code Repository ${gitRepo} not eligible for release, since no code difference found between branches ${params.source} and ${params.target}"
+
+                            } else {
+
+                                def currentVersion = gitOperation.getCurrentVersion()
+
+                                def nextDevelopmentVersion = buildVersion.getNextDevelopmentVersion(currentVersion)
+                                echo "Next development version from current version ${currentVersion} is ${nextDevelopmentVersion}"
+
+                                def nextReleaseVersion = buildVersion.getReleaseVersion(currentVersion);
+                                echo "Next release version from current version ${currentVersion} is ${nextReleaseVersion}"
+
+                                echo "Some Changes have been detected between branches ${params.source} and ${params.target} in ${gitRepo}"
+                                sh 'git branch'
+                                sh 'git checkout dev'
+                                sh 'git branch -a'
+                                sh 'git branch -r'
+
+                                echo "Debug mode - " + params.debugmode
+                                if (!params.debugmode) {
+                                    withMaven(maven: 'JGIT_PIPELINE_MAVEN_PLUGIN') {
+                                        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
+                                            // def output = sh returnStdout: true, script: "mvn jgitflow:release-start -DallowSnapshots -DpushReleases=true" // capturing output
+                                            sh "mvn jgitflow:release-start -DallowSnapshots -DpushReleases=true -Dusername=$USERNAME -Dpassword=$PASSWORD -DreleaseVersion=${nextReleaseVersion} -DdevelopmentVersion=${nextDevelopmentVersion}"
+
+                                        }
+                                    }
+                                }
+                            }
+
+                            echo "cleaning workspace"
+                            deleteDir();
+                        }
+                    } else if (params.choice == 'End-Release') {
+
+                        for (gitRepo in gitRepos) {
+
+                            deleteDir();
+                            echo "===================== Checking out " + gitRepo + " ====================="
+                            gitOperation.gitCheckout(gitRepo, 'dev') // TODO: pick dev branch from jgit configuration
+
+                            def releaseBranchExists = gitOperation.isReleaseBranchExists()
+                            if (releaseBranchExists == true) {
+                                sh 'git branch'
+                                sh 'git checkout dev'
+                                sh 'git branch -a'
+                                sh 'git branch -r'
+                                echo "Run maven command for ending the release"
+
+                                echo "Debug mode" + params.debugmode
+                                if (!params.debugmode) {
+                                    withMaven(maven: 'JGIT_PIPELINE_MAVEN_PLUGIN') {
+
+                                        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
+                                            sh "mvn jgitflow:release-finish -DallowSnapshots -DperformRelease=false -DpushReleases=true -Dusername=$USERNAME -Dpassword=$PASSWORD"
+                                            // def output = sh returnStdout: true, script: "mvn jgitflow:release-finish -DallowSnapshots -DperformRelease=false -DpushReleases=true -Dusername=root -Dpassword=Passw0rd"
+                                            //echo output
+                                        }
+                                    }
+                                }
+                            } else {
+                                echo "No release branch exist for " + gitRepo
+                            }
+
+                            echo "cleaning workspace"
+                            deleteDir();
+                        }
+                    }
+                }
+
+            } // step ends
+
+        }  // stage ends
+    }
+}
+
+/**
+ * This method returns the basescript path based on where the pipeline code has been checked out
+ * @return
+ */
+def getBaseScriptsPath() {
+
+    sh "ls -l -R ${WORKSPACE}" // debug statement
+
+    def directlyInWorkspace = fileExists "/${WORKSPACE}/src/main/groovy/InputSupport.groovy"
+
+    def baseScriptPath;
+    if (directlyInWorkspace) {
+        baseScriptPath = "${WORKSPACE}"
+    } else {
+
+        def workSpaceInScriptDirectory = fileExists "/${WORKSPACE}@script/src/main/groovy/InputSupport.groovy"
+
+        if (workSpaceInScriptDirectory) {
+            baseScriptPath = "${WORKSPACE}@script"
+            sh "ls -l -R ${baseScriptPath}" // debug statement
+        } else {
+            throw new Exception("Base script path not found")
+        }
+    }
+    echo "Found base path of script at ${baseScriptPath}"
+    return baseScriptPath
+}
+
+
