@@ -1,0 +1,23 @@
+@startuml
+actor "Dev" as dev
+participant "Jenkins" as jenkin #lightgreen
+
+dev -> jenkin : Initial Job (Build with Parameters)
+
+
+alt Input for pipeline
+jenkin -> jenkin: Step 1: Input all the **code repositories** (all the microservices code repositories)
+jenkin -> jenkin: Step 2: Trigger the pipeline
+end
+
+loop Pipeline execution for all the input code repositories
+    jenkin -> jenkin: Pipeline finds if for the given code repository release branch exists or not.
+    alt If Release branch found
+       jenkin -> jenkin: Release is ended by the jgit plugin command
+
+    else no code difference
+        jenkin -> jenkin: __code repo <name> is not eligible for release end.
+    end
+end
+jenkin -> dev: Finish job
+@enduml
