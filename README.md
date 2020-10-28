@@ -24,7 +24,7 @@ Now releasing and maintaining that code version manually via release plugin or e
 
 In this scenario this pipeline becomes a handy and fast solution. It will help you to release your code base for testing *i.e. in gitflow workflow terms start-release* and in another click once testing and bug fixing and done this pipeline will help you to merge the code in master and create a tag *in gitflow terms it means end-release*
 
-And the best part is **single click would orchestate this for all the microservices (git repositories)**. We just have to be follow some conventions and we deciplined in how we commit code and bring it to dev.
+And the best part is **single click would orchestate this for all the microservices (git repositories)**. We just have to be follow some conventions and be disciplined in how we commit code and bring it to dev.
 Rest everything will be taken care by this pipeline.
 
 ## How this pipeline works
