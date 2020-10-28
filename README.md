@@ -6,7 +6,7 @@ This pipeline is abstraction over [gitflow-workflow](https://nvie.com/posts/a-su
 
 ## Why Gitflow!
 This [blog](https://jeffkreeftmeijer.com/git-flow/) answers everything!
-*I like the title of the blog a lot 'why-arent-you-using-git-flow'.
+*I like the title of the blog a lot 'why-arent-you-using-git-flow'*.
 
 ## Implementation of gitflow
 This pipeline is backed by with maven plugin [jgit-flow](https://bitbucket.org/atlassian/jgit-flow) which is basically java implementation of gitflow-workflow by atlassian. 
