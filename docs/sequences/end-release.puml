@@ -15,7 +15,7 @@ loop Pipeline execution for all the input code repositories
     alt If Release branch found
        jenkin -> jenkin: Release is ended by the jgit plugin command
 
-    else no code difference
+    else no release branch
         jenkin -> jenkin: __code repo <name> is not eligible for release end.
     end
 end
