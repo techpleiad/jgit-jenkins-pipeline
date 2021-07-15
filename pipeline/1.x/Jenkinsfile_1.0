@@ -43,7 +43,7 @@ pipeline {
                             echo "===================== Checking out " + gitRepo + " ====================="
                             gitOperation.gitCheckout(gitRepo, 'dev')
 
-                            def codeDifference = gitOperation.checkCodeDifferenceBetweenGivenBranches(params.source, params.target)
+                            def codeDifference = gitOperation.checkCodeDifferenceBetweenGivenBranches(params.source, params.target, 'target')
                             echo "Code difference are eligible for release " + codeDifference
 
                             if (codeDifference == false) {
@@ -126,7 +126,7 @@ pipeline {
                             if (releaseBranchExists == true) {
                             echo "relase branch exists"
                                 def releaseBranchName = gitOperation.getReleaseBranch()
-                                def codeDifference = gitOperation.checkCodeDifferenceBetweenGivenBranches('dev', releaseBranchName)
+                                def codeDifference = gitOperation.checkCodeDifferenceBetweenGivenBranches('dev', releaseBranchName, 'release')
                                 echo "Code difference are eligible for release update " + codeDifference
                                 if (codeDifference == false) {
                                     echo "Code Repository ${gitRepo} not eligible for release update, since no code difference found between branches dev and ${releaseBranchName}"

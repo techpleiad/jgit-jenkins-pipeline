@@ -52,13 +52,25 @@ def getReleaseBranch() {
  *
  * @return
  */
-def checkCodeDifferenceBetweenGivenBranches(String source, String target) {
-    def fileName = sh returnStdout: true, script: "git diff --name-only remotes/origin/${source} remotes/origin/${target}"
+def checkCodeDifferenceBetweenGivenBranches(String source, String target, String isRelease) {
+    if(isRelease == 'release'){
+        def fileName = sh returnStdout: true, script: "git diff --name-only remotes/origin/${source} remotes/${target}"
+    }else{
+        def fileName = sh returnStdout: true, script: "git diff --name-only remotes/origin/${source} remotes/origin/${target}"
+    }
     if (fileName.trim() == "pom.xml") {
-        def numAns = sh returnStdout: true, script: "git diff --numstat remotes/origin/${source} remotes/origin/${target}"
+        if(isRelease == 'release'){
+            def numAns = sh returnStdout: true, script: "git diff --numstat remotes/origin/${source} remotes/${target}"
+        }else{
+            def numAns = sh returnStdout: true, script: "git diff --numstat remotes/origin/${source} remotes/origin/${target}"
+        }
         def numOfLines = numAns.substring(0, 2).trim()
         if (numOfLines == '1') {
-            def output = sh returnStdout: true, script: "git diff --unified=0 remotes/origin/${source} remotes/origin/${target}"
+            if(isRelease == 'release'){
+                def output = sh returnStdout: true, script: "git diff --unified=0 remotes/origin/${source} remotes/${target}"
+            }else{
+                def output = sh returnStdout: true, script: "git diff --unified=0 remotes/origin/${source} remotes/origin/${target}"
+            }
             def tag;
             for (int start = 0; start < output.length(); start = start + 1) {
                 if (output[start] == '<') {
