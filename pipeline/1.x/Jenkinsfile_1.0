@@ -126,7 +126,7 @@ pipeline {
                             if (releaseBranchExists == true) {
                             echo "relase branch exists"
                                 def releaseBranchName = gitOperation.getReleaseBranch()
-                                def codeDifference = gitOperation.checkCodeDifferenceBetweenGivenBranches('dev', releaseBranchName, 'release')
+                                def codeDifference = gitOperation.checkCodeDifferenceBetweenGivenBranches('dev', releaseBranchName.trim(), 'release')
                                 echo "Code difference are eligible for release update " + codeDifference
                                 if (codeDifference == false) {
                                     echo "Code Repository ${gitRepo} not eligible for release update, since no code difference found between branches dev and ${releaseBranchName}"
