@@ -155,7 +155,6 @@ pipeline {
                                             //echo output
                                         }
                                         withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
-                                            // def output = sh returnStdout: true, script: "mvn jgitflow:release-start -DallowSnapshots -DpushReleases=true" // capturing output
                                             sh "git merge dev_copy"
                                         }
                                         
@@ -167,8 +166,7 @@ pipeline {
                                     output = output.trim()
                                     echo "${output}"
                                     withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
-                                            // def output = sh returnStdout: true, script: "mvn jgitflow:release-start -DallowSnapshots -DpushReleases=true" // capturing output
-                                            sh "git push -u origin ${output}"
+                                            sh('git push https://${USERNAME}:${PASSWORD}@github.com/DialgicMew/jGitrepo1.git')
                                         }
                                     sh "git branch -d dev_copy"
                                 }
