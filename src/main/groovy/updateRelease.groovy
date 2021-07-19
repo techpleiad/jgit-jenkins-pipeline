@@ -1,5 +1,4 @@
 def updateRelease(def gitOperation, def gitRepo){
-    echo "here----------------"
     deleteDir();
     echo "Checking out: " + gitRepo
     gitOperation.gitCheckout(gitRepo, 'dev')
@@ -17,9 +16,9 @@ def updateRelease(def gitOperation, def gitRepo){
             gitOperation.gitCheckout(gitRepo, releaseBranchName)
             def currentVersion = gitOperation.getCurrentVersion();
             gitOperation.gitCheckout(gitRepo, 'dev')
-            echo " Checking out dev complete "
+            echo "Checking out dev complete "
             sh "git checkout -b dev_copy"
-            echo " Checking out dev_copy complete "
+            echo "Checking out dev_copy complete "
 
             withMaven(maven: 'JGIT_PIPELINE_MAVEN_PLUGIN') {
                 withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
@@ -29,9 +28,10 @@ def updateRelease(def gitOperation, def gitRepo){
             }
             gitOperation.gitCheckout(gitRepo, releaseBranchName)
             try{
+                def result = gitOperation.injectGitRepoWithUserNamePassword(gitRepo)
                 withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
                     sh "git merge dev_copy"
-                    sh('git push https://${USERNAME}:${PASSWORD}@github.com/DialgicMew/jGitrepo1.git')
+                    sh('git push ${result}')
                 }
                 sh "git branch -d dev_copy"
             }
@@ -40,7 +40,7 @@ def updateRelease(def gitOperation, def gitRepo){
             }    
         }
     } else {
-        echo "No release branch exist for " + gitRepo
+        echo "No release branch exist for: " + gitRepo
     }
     echo "cleaning workspace"
     deleteDir();

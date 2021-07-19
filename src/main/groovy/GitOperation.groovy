@@ -109,5 +109,28 @@ def getCurrentVersion() {
     }
 }
 
+/**
+ * This method modifies the gitRepo link and injects it with the username and password
+ */
+def injectGitRepoWithUserNamePassword(def gitRepo){
+    def count = 0
+    int start = 0
+    def result
+    for (start = 0; start < gitRepo.length(); start = start + 1) {
+        if (output[start] == '/' && count < 2) {
+            count = count + 1
+        }else{
+            break
+        }
+    }
+    def part1 = gitRepo.substring(0, start)
+    def part2 = gitRepo.substring(start, gitRepo.length)
+    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
+        result =  part1 + "${USERNAME}:${PASSWORD}@" + part2
+    }
+    echo result
+    return result
+} 
+
 return this
 
