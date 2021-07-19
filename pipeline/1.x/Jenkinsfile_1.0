@@ -157,18 +157,18 @@ pipeline {
                                         withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
                                             sh "git merge dev_copy"
                                         }
-                                        
-                                    }
-                                    catch (exc) {
-                                        echo "Could not merge release into dev: ${exc}"
-                                    } 
-                                    def output = sh returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD'
-                                    output = output.trim()
-                                    echo "${output}"
-                                    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
+                                        def output = sh returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD'
+                                        output = output.trim()
+                                        echo "${output}"
+                                        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
                                             sh('git push https://${USERNAME}:${PASSWORD}@github.com/DialgicMew/jGitrepo1.git')
                                         }
-                                    sh "git branch -d dev_copy"
+                                        sh "git branch -d dev_copy"
+                                    }
+                                    catch (exc) {
+                                        echo "Could not merge release into dev due to conflicts"
+                                    } 
+                                    
                                 }
                             } else {
                                 echo "No release branch exist for " + gitRepo
