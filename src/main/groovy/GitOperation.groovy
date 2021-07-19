@@ -53,23 +53,26 @@ def getReleaseBranch() {
  * @return
  */
 def checkCodeDifferenceBetweenGivenBranches(String source, String target, String isRelease) {
+    def fileName
     if(isRelease == 'release'){
-        def fileName = sh returnStdout: true, script: "git diff --name-only remotes/origin/${source} remotes/${target}"
+        fileName = sh returnStdout: true, script: "git diff --name-only remotes/origin/${source} remotes/${target}"
     }else{
-        def fileName = sh returnStdout: true, script: "git diff --name-only remotes/origin/${source} remotes/origin/${target}"
+        fileName = sh returnStdout: true, script: "git diff --name-only remotes/origin/${source} remotes/origin/${target}"
     }
     if (fileName.trim() == "pom.xml") {
+        def numAns
         if(isRelease == 'release'){
-            def numAns = sh returnStdout: true, script: "git diff --numstat remotes/origin/${source} remotes/${target}"
+            numAns = sh returnStdout: true, script: "git diff --numstat remotes/origin/${source} remotes/${target}"
         }else{
-            def numAns = sh returnStdout: true, script: "git diff --numstat remotes/origin/${source} remotes/origin/${target}"
+            numAns = sh returnStdout: true, script: "git diff --numstat remotes/origin/${source} remotes/origin/${target}"
         }
         def numOfLines = numAns.substring(0, 2).trim()
         if (numOfLines == '1') {
+            def output
             if(isRelease == 'release'){
-                def output = sh returnStdout: true, script: "git diff --unified=0 remotes/origin/${source} remotes/${target}"
+                output = sh returnStdout: true, script: "git diff --unified=0 remotes/origin/${source} remotes/${target}"
             }else{
-                def output = sh returnStdout: true, script: "git diff --unified=0 remotes/origin/${source} remotes/origin/${target}"
+                output = sh returnStdout: true, script: "git diff --unified=0 remotes/origin/${source} remotes/origin/${target}"
             }
             def tag;
             for (int start = 0; start < output.length(); start = start + 1) {

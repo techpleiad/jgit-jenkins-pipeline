@@ -131,23 +131,45 @@ pipeline {
                                 if (codeDifference == false) {
                                     echo "Code Repository ${gitRepo} not eligible for release update, since no code difference found between branches dev and ${releaseBranchName}"
                                 } else {
-                                    gitOperation.gitCheckout(gitRepo, ${releaseBranchName})
+                                    gitOperation.gitCheckout(gitRepo, releaseBranchName)
                                     def currentVersion = gitOperation.getCurrentVersion();
                                     gitOperation.gitCheckout(gitRepo, 'dev')
                                     echo " Checking out dev complete "
-                                    gitOperation.gitCheckout(gitRepo, 'dev_copy')
+                                    sh "git checkout -b dev_copy"
                                     echo " Checking out dev_copy complete "
                                     
-                                    sh "mvn release:update-versions -DautoVersionSubmodules=true -DdevelopmentVersion=${currentVersion} -DgenerateBackupPoms=false"
-
-                                    gitOperation.gitCheckout(gitRepo, ${releaseBranchName})
+                                    withMaven(maven: 'JGIT_PIPELINE_MAVEN_PLUGIN') {
+                                        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
+                                            // def output = sh returnStdout: true, script: "mvn jgitflow:release-start -DallowSnapshots -DpushReleases=true" // capturing output
+                                            sh "mvn release:update-versions -DautoVersionSubmodules=true -DdevelopmentVersion=${currentVersion} -DgenerateBackupPoms=false"
+                                        }
+                                    }
+                                    
+                                    gitOperation.gitCheckout(gitRepo, releaseBranchName)
                                     try{
-                                        sh "git merge dev_copy"
+                                        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
+                                            sh "git config --global user.email $USERNAME"
+                                            sh "git config --global user.name $USERNAME"
+                                            sh "git config --global user.password $PASSWORD"
+                                            // def output = sh returnStdout: true, script: "mvn jgitflow:release-finish -DallowSnapshots -DperformRelease=false -DpushReleases=true -Dusername=root -Dpassword=Passw0rd"
+                                            //echo output
+                                        }
+                                        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
+                                            // def output = sh returnStdout: true, script: "mvn jgitflow:release-start -DallowSnapshots -DpushReleases=true" // capturing output
+                                            sh "git merge dev_copy"
+                                        }
+                                        
                                     }
                                     catch (exc) {
                                         echo "Could not merge release into dev: ${exc}"
                                     } 
-                                    sh "git push origin"  
+                                    def output = sh returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD'
+                                    output = output.trim()
+                                    echo "${output}"
+                                    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
+                                            // def output = sh returnStdout: true, script: "mvn jgitflow:release-start -DallowSnapshots -DpushReleases=true" // capturing output
+                                            sh "git push -u origin ${output}"
+                                        }
                                     sh "git branch -d dev_copy"
                                 }
                             } else {
