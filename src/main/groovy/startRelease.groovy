@@ -1,4 +1,4 @@
-def startRelease(String source, String target, boolean debugmode, def gitOperation, def buildVersion){
+def startRelease(String source, String target, boolean debugmode, def gitOperation, def buildVersion, def gitRepo){
         echo "===================== Checking out " + gitRepo + " ====================="
         gitOperation.gitCheckout(gitRepo, 'dev')
 

@@ -1,4 +1,4 @@
-def endRelease(String source, String target, boolean debugmode,def gitOperation, def buildVersion){
+def endRelease(String source, String target, boolean debugmode,def gitOperation, def buildVersion, def gitRepo){
     deleteDir();
     echo "===================== Checking out " + gitRepo + " ====================="
     gitOperation.gitCheckout(gitRepo, 'dev') // TODO: pick dev branch from jgit configuration
