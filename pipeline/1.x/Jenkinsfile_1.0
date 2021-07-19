@@ -28,159 +28,30 @@ pipeline {
                     echo "Base script path ${baseScriptsPath}"
 
                     def inputSupport = load baseScriptsPath + "InputSupport.groovy"
-
                     def gitRepos = inputSupport.parseInputData(params.GitRepos)
                     def emails = inputSupport.parseInputData(params.EmailIds)
-
                     def gitOperation = load baseScriptsPath + "GitOperation.groovy"
-
                     def buildVersion = load baseScriptsPath + "BuildVersion.groovy"
+                    def startRelease = load baseScriptsPath + "startRelease.groovy"
+                    def endRelease = load baseScriptsPath + "endRelease.groovy"
+                    def updateRelease = load baseScriptsPath + "updateRelease.groovy"
 
                     if (params.choice == 'Start-Release') {
-
                         for (gitRepo in gitRepos) {
-
-                            echo "===================== Checking out " + gitRepo + " ====================="
-                            gitOperation.gitCheckout(gitRepo, 'dev')
-
-                            def codeDifference = gitOperation.checkCodeDifferenceBetweenGivenBranches(params.source, params.target, 'target')
-                            echo "Code difference are eligible for release " + codeDifference
-
-                            if (codeDifference == false) {
-                                echo "Code Repository ${gitRepo} not eligible for release, since no code difference found between branches ${params.source} and ${params.target}"
-
-                            } else {
-
-                                def currentVersion = gitOperation.getCurrentVersion()
-
-                                def nextDevelopmentVersion = buildVersion.getNextDevelopmentVersion(currentVersion)
-                                echo "Next development version from current version ${currentVersion} is ${nextDevelopmentVersion}"
-
-                                def nextReleaseVersion = buildVersion.getReleaseVersion(currentVersion);
-                                echo "Next release version from current version ${currentVersion} is ${nextReleaseVersion}"
-
-                                echo "Some Changes have been detected between branches ${params.source} and ${params.target} in ${gitRepo}"
-                                sh 'git branch'
-                                sh 'git checkout dev'
-                                sh 'git branch -a'
-                                sh 'git branch -r'
-
-                                echo "Debug mode - " + params.debugmode
-                                if (!params.debugmode) {
-                                    withMaven(maven: 'JGIT_PIPELINE_MAVEN_PLUGIN') {
-                                        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
-                                            // def output = sh returnStdout: true, script: "mvn jgitflow:release-start -DallowSnapshots -DpushReleases=true" // capturing output
-                                            sh "mvn jgitflow:release-start -DallowSnapshots -DpushReleases=true -Dusername=$USERNAME -Dpassword=$PASSWORD -DreleaseVersion=${nextReleaseVersion} -DdevelopmentVersion=${nextDevelopmentVersion}"
-
-                                        }
-                                    }
-                                }
-                            }
-
-                            echo "cleaning workspace"
-                            deleteDir();
+                            startRelease.startRelease(params.source, params.target, params.debugmode, gitOperation, buildVersion)
                         }
+
                     } else if (params.choice == 'End-Release') {
-
                         for (gitRepo in gitRepos) {
-
-                            deleteDir();
-                            echo "===================== Checking out " + gitRepo + " ====================="
-                            gitOperation.gitCheckout(gitRepo, 'dev') // TODO: pick dev branch from jgit configuration
-
-                            def releaseBranchExists = gitOperation.isReleaseBranchExists()
-                            if (releaseBranchExists == true) {
-                                sh 'git branch'
-                                sh 'git checkout dev'
-                                sh 'git branch -a'
-                                sh 'git branch -r'
-                                echo "Run maven command for ending the release"
-
-                                echo "Debug mode" + params.debugmode
-                                if (!params.debugmode) {
-                                    withMaven(maven: 'JGIT_PIPELINE_MAVEN_PLUGIN') {
-
-                                        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
-                                            sh "mvn jgitflow:release-finish -DallowSnapshots -DperformRelease=false -DpushReleases=true -Dusername=$USERNAME -Dpassword=$PASSWORD"
-                                            // def output = sh returnStdout: true, script: "mvn jgitflow:release-finish -DallowSnapshots -DperformRelease=false -DpushReleases=true -Dusername=root -Dpassword=Passw0rd"
-                                            //echo output
-                                        }
-                                    }
-                                }
-                            } else {
-                                echo "No release branch exist for " + gitRepo
-                            }
-
-                            echo "cleaning workspace"
-                            deleteDir();
+                            endRelease.endRelease(params.source, params.target, params.debugmode, gitOperation, buildVersion)
                         }
                     }else if (params.choice == "Update-Release") {
                         for (gitRepo in gitRepos) {
-                            deleteDir();
-                            echo "===================== Checking out " + gitRepo + " ====================="
-                            gitOperation.gitCheckout(gitRepo, 'dev')
-                
-                            def releaseBranchExists = gitOperation.isReleaseBranchExists()
-                            echo " relase branch status: " + releaseBranchExists
-
-                            if (releaseBranchExists == true) {
-                            echo "relase branch exists"
-                                def releaseBranchName = gitOperation.getReleaseBranch()
-                                def codeDifference = gitOperation.checkCodeDifferenceBetweenGivenBranches('dev', releaseBranchName.trim(), 'release')
-                                echo "Code difference are eligible for release update " + codeDifference
-                                if (codeDifference == false) {
-                                    echo "Code Repository ${gitRepo} not eligible for release update, since no code difference found between branches dev and ${releaseBranchName}"
-                                } else {
-                                    gitOperation.gitCheckout(gitRepo, releaseBranchName)
-                                    def currentVersion = gitOperation.getCurrentVersion();
-                                    gitOperation.gitCheckout(gitRepo, 'dev')
-                                    echo " Checking out dev complete "
-                                    sh "git checkout -b dev_copy"
-                                    echo " Checking out dev_copy complete "
-                                    
-                                    withMaven(maven: 'JGIT_PIPELINE_MAVEN_PLUGIN') {
-                                        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
-                                            // def output = sh returnStdout: true, script: "mvn jgitflow:release-start -DallowSnapshots -DpushReleases=true" // capturing output
-                                            sh "mvn release:update-versions -DautoVersionSubmodules=true -DdevelopmentVersion=${currentVersion} -DgenerateBackupPoms=false"
-                                        }
-                                    }
-                                    
-                                    gitOperation.gitCheckout(gitRepo, releaseBranchName)
-                                    try{
-                                        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
-                                            sh "git config --global user.email $USERNAME"
-                                            sh "git config --global user.name $USERNAME"
-                                            sh "git config --global user.password $PASSWORD"
-                                            // def output = sh returnStdout: true, script: "mvn jgitflow:release-finish -DallowSnapshots -DperformRelease=false -DpushReleases=true -Dusername=root -Dpassword=Passw0rd"
-                                            //echo output
-                                        }
-                                        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
-                                            sh "git merge dev_copy"
-                                        }
-                                        def output = sh returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD'
-                                        output = output.trim()
-                                        echo "${output}"
-                                        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
-                                            sh('git push https://${USERNAME}:${PASSWORD}@github.com/DialgicMew/jGitrepo1.git')
-                                        }
-                                        sh "git branch -d dev_copy"
-                                    }
-                                    catch (exc) {
-                                        echo "Could not merge release into dev due to conflicts"
-                                    } 
-                                    
-                                }
-                            } else {
-                                echo "No release branch exist for " + gitRepo
-                            }
-                            echo "cleaning workspace"
-                            deleteDir();
+                            updateRelease.updateRelease(gitOperation)
                         }
                     }
                 }
-
             } // step ends
-
         }  // stage ends
     }
 }
