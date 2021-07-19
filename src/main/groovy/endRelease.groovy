@@ -29,3 +29,5 @@ def endRelease(String source, String target, boolean debugmode,def gitOperation,
     echo "cleaning workspace"
     deleteDir();
 }
+
+return this

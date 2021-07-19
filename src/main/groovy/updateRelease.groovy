@@ -1,4 +1,5 @@
-def updateRelease(def gitOperation){
+def updateRelease(def gitOperation, def gitRepo){
+    echo "here----------------"
     deleteDir();
     echo "Checking out: " + gitRepo
     gitOperation.gitCheckout(gitRepo, 'dev')
@@ -44,3 +45,5 @@ def updateRelease(def gitOperation){
     echo "cleaning workspace"
     deleteDir();
 }
+
+return this

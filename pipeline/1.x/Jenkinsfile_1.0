@@ -16,13 +16,9 @@ pipeline {
 
 
     stages { 
-
         stage('Operation') {
-
             steps {
-
                 script {
-
                     def basePath = getBaseScriptsPath()
                     def baseScriptsPath = basePath + "/src/main/groovy/"
                     echo "Base script path ${baseScriptsPath}"
@@ -38,16 +34,15 @@ pipeline {
 
                     if (params.choice == 'Start-Release') {
                         for (gitRepo in gitRepos) {
-                            startRelease.startRelease(params.source, params.target, params.debugmode, gitOperation, buildVersion)
+                            startRelease.startRelease(params.source, params.target, params.debugmode, gitOperation, buildVersion, gitRepo)
                         }
-
                     } else if (params.choice == 'End-Release') {
                         for (gitRepo in gitRepos) {
-                            endRelease.endRelease(params.source, params.target, params.debugmode, gitOperation, buildVersion)
+                            endRelease.endRelease(params.source, params.target, params.debugmode, gitOperation, buildVersion, gitRepo)
                         }
                     }else if (params.choice == "Update-Release") {
                         for (gitRepo in gitRepos) {
-                            updateRelease.updateRelease(gitOperation)
+                            updateRelease.updateRelease(gitOperation, gitRepo)
                         }
                     }
                 }
