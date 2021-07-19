@@ -116,19 +116,23 @@ def injectGitRepoWithUserNamePassword(def gitRepo){
     def count = 0
     int start = 0
     def result
-    for (start = 0; start < gitRepo.length(); start = start + 1) {
-        if (output[start] == '/' && count < 2) {
+    for (start; start < gitRepo.length(); start = start + 1) {
+        if (gitRepo[start] == '/') {
             count = count + 1
-        }else{
-            break
+            if(count == 2){
+                break
+            }
         }
     }
+    start = start + 1
     def part1 = gitRepo.substring(0, start)
-    def part2 = gitRepo.substring(start, gitRepo.length)
+    def part2 = gitRepo.substring(start, gitRepo.length())
+    echo "${start}"
+    echo part1
+    echo part2
     withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
         result =  part1 + "${USERNAME}:${PASSWORD}@" + part2
     }
-    echo result
     return result
 } 
 

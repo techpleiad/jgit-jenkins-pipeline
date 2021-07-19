@@ -28,10 +28,10 @@ def updateRelease(def gitOperation, def gitRepo){
             }
             gitOperation.gitCheckout(gitRepo, releaseBranchName)
             try{
-                def result = gitOperation.injectGitRepoWithUserNamePassword(gitRepo)
                 withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
+                    def result = gitOperation.injectGitRepoWithUserNamePassword(gitRepo)
                     sh "git merge dev_copy"
-                    sh('git push ${result}')
+                    sh('git push ' + result)
                 }
                 sh "git branch -d dev_copy"
             }
