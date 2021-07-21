@@ -40,6 +40,11 @@ def isReleaseBranchExists() {
     //means that there no existing repo like release-*.*.*
 }
 
+def getReleaseBranch() {
+    def branchList = sh returnStdout: true, script: "git branch -r --list *release-*.*.*"
+    return branchList;
+}
+
 /**
  * This method evalutes the difference between given source and target branch.
  * - if the difference is only one and that to only pom module version then this method returns false i.e. repo is not eligible to release
@@ -47,13 +52,28 @@ def isReleaseBranchExists() {
  *
  * @return
  */
-def checkCodeDifferenceBetweenGivenBranches() {
-    def fileName = sh returnStdout: true, script: "git diff --name-only remotes/origin/${params.source} remotes/origin/${params.target}"
+def checkCodeDifferenceBetweenGivenBranches(String source, String target, String isRelease) {
+    def fileName
+    if(isRelease == 'release'){
+        fileName = sh returnStdout: true, script: "git diff --name-only remotes/origin/${source} remotes/${target}"
+    }else{
+        fileName = sh returnStdout: true, script: "git diff --name-only remotes/origin/${source} remotes/origin/${target}"
+    }
     if (fileName.trim() == "pom.xml") {
-        def numAns = sh returnStdout: true, script: "git diff --numstat remotes/origin/${params.source} remotes/origin/${params.target}"
+        def numAns
+        if(isRelease == 'release'){
+            numAns = sh returnStdout: true, script: "git diff --numstat remotes/origin/${source} remotes/${target}"
+        }else{
+            numAns = sh returnStdout: true, script: "git diff --numstat remotes/origin/${source} remotes/origin/${target}"
+        }
         def numOfLines = numAns.substring(0, 2).trim()
         if (numOfLines == '1') {
-            def output = sh returnStdout: true, script: "git diff --unified=0 remotes/origin/${params.source} remotes/origin/${params.target}"
+            def output
+            if(isRelease == 'release'){
+                output = sh returnStdout: true, script: "git diff --unified=0 remotes/origin/${source} remotes/${target}"
+            }else{
+                output = sh returnStdout: true, script: "git diff --unified=0 remotes/origin/${source} remotes/origin/${target}"
+            }
             def tag;
             for (int start = 0; start < output.length(); start = start + 1) {
                 if (output[start] == '<') {
@@ -88,6 +108,33 @@ def getCurrentVersion() {
         return currentVersion
     }
 }
+
+/**
+ * This method modifies the gitRepo link and injects it with the username and password
+ */
+def injectGitRepoWithUserNamePassword(def gitRepo){
+    def count = 0
+    int start = 0
+    def result
+    for (start; start < gitRepo.length(); start = start + 1) {
+        if (gitRepo[start] == '/') {
+            count = count + 1
+            if(count == 2){
+                break
+            }
+        }
+    }
+    start = start + 1
+    def part1 = gitRepo.substring(0, start)
+    def part2 = gitRepo.substring(start, gitRepo.length())
+    echo "${start}"
+    echo part1
+    echo part2
+    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
+        result =  part1 + "${USERNAME}:${PASSWORD}@" + part2
+    }
+    return result
+} 
 
 return this
 

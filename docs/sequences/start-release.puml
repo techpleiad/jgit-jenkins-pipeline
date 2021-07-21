@@ -7,12 +7,12 @@ dev -> jenkin : Initial Job (Build with Parameters)
 
 alt Input for pipeline
 jenkin -> jenkin: Step 1: Input all the **code repositories** (all the microservices code repositories)
-jenkin -> jenkin: Step 2: Input **develop** branch name and **master** branch name.
+jenkin -> jenkin: Step 2: Input **//development//** branch name and **//master//** branch name.
 jenkin -> jenkin: Step 3: Trigger the pipeline
 end
 
 loop Pipeline execution for all the input code repositories
-    jenkin -> jenkin: Pipeline smartly finds the code difference between **develop** and **master**
+    jenkin -> jenkin: Pipeline smartly finds the code difference between **//development//** and **//master//**
     alt If Code difference is found
        jenkin -> jenkin: Pipeline calculates the next develop branch version and\nrelease version  from the input defined in jgit.version file.
        jenkin -> jenkin: Release the code using jgit plugin

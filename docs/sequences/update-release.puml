@@ -1,0 +1,31 @@
+@startuml
+actor "Dev" as dev
+participant "Jenkins" as jenkin #lightgreen
+
+dev -> jenkin : Initial Job (Build with Parameters)
+
+
+alt Input for pipeline
+jenkin -> jenkin: Step 1: Input all the **code repositories** (all the microservices code repositories)
+jenkin -> jenkin: Step 2: Trigger the pipeline
+end
+
+loop Pipeline execution for all the input code repositories
+    jenkin -> jenkin: Pipeline finds if for the given code repository release branch exists or not.
+    alt If Release branch found
+        jenkin -> jenkin: Pipeline smartly finds the code difference between **//dev//** and **//release//**
+        alt If Code difference is found
+            jenkin -> jenkin: Pipeline will create a copy of dev branch **//dev_copy//** and version it according to release branch
+            jenkin -> jenkin: Merge **//dev_copy//** into **//release//** branch with proper versioning
+            jenkin -> jenkin: Delete **//dev_copy//**
+
+        else no code difference
+            jenkin -> jenkin: __code repo <name> is not eligible for release__ will be logged
+        end
+
+    else no release branch
+        jenkin -> jenkin: __code repo <name> is not eligible for release__ will be logged
+    end
+end
+jenkin -> dev: Finish job
+@enduml
