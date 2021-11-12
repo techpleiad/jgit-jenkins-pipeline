@@ -1,8 +1,8 @@
-def updateRelease(def gitOperation, def gitRepo){
+def updateRelease(def gitOperation, def gitRepo, def buildVersion) {
     deleteDir();
     echo "Checking out: " + gitRepo
     gitOperation.gitCheckout(gitRepo, 'dev')
-                
+
     def releaseBranchExists = gitOperation.isReleaseBranchExists()
     echo " release branch status: " + releaseBranchExists
 
@@ -26,8 +26,13 @@ def updateRelease(def gitOperation, def gitRepo){
                     sh "mvn release:update-versions -DautoVersionSubmodules=true -DdevelopmentVersion=${currentVersion} -DgenerateBackupPoms=false"
                 }
             }
-            gitOperation.gitCheckout(gitRepo, releaseBranchName)
-            try{
+            withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
+                sh "git add ."
+                sh "git commit -m \"some\""
+            }
+
+            gitOperation.gitCheckoutWithoutCleaning(gitRepo, releaseBranchName)
+            try {
                 withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
                     def result = gitOperation.injectGitRepoWithUserNamePassword(gitRepo)
                     sh "git merge dev_copy"
@@ -37,7 +42,11 @@ def updateRelease(def gitOperation, def gitRepo){
             }
             catch (exc) {
                 echo "Could not merge release into dev due to conflicts"
-            }    
+            }
+            echo "Creating new tag"
+            def currentTagVersion = gitOperation.getLatestTag()
+            def nextTagVersion = buildVersion.calculateNextTagForRelease(currentTagVersion)
+            gitOperation.createTag(nextTagVersion, gitRepo)
         }
     } else {
         echo "No release branch exist for: " + gitRepo

@@ -3,10 +3,16 @@
 
 pipeline {
 
-    agent any
+    agent {
+        label {
+            label "hgw-jenkins-slave-1"
+            customWorkspace "/var/lib/jenkins/workspace/${env.JOB_NAME}"
+        }
+    }
     parameters {
-        choice(name: 'choice', choices: ['Start-Release', 'End-Release', 'Update-Release'], description: 'Select Mode')
+        choice(name: 'choice', choices: ['Start-Release', 'End-Release', 'Update-Release', 'Update-Shared-Version'], description: 'Select Mode')
         booleanParam(name: 'debugmode', defaultValue: false, description: 'When debug mode is On, JGIT command will not be executed')
+        choice(name: 'jdk_11', choices: "No\nYes", description: "Select yes for Open-JDK-11")
         text(name: 'GitRepos', defaultValue: "${JGIT_PIPELINE_DEFAULT_GIT_REPOS}", description: 'Enter the git repos, add a semicolon after each repo')
         text(name: 'EmailIds', defaultValue: "${JGIT_PIPELINE_DEFAULT_NOTIFICATION_EMAIL}", description: 'Enter the git repos, add a semicolon after each repo')
         string(name: 'source', defaultValue: 'dev', description: 'Source Branch of comparison')
@@ -14,8 +20,7 @@ pipeline {
         string(name: 'target', defaultValue: 'master', description: 'Target branch of comparison')
     }
 
-
-    stages { 
+    stages {
         stage('Operation') {
             steps {
                 script {
@@ -26,27 +31,43 @@ pipeline {
                     def inputSupport = load baseScriptsPath + "InputSupport.groovy"
                     def gitRepos = inputSupport.parseInputData(params.GitRepos)
                     def emails = inputSupport.parseInputData(params.EmailIds)
-                    def gitOperation = load baseScriptsPath + "GitOperation.groovy"
+                    echo "Input git repositories ${gitRepos} and email id ${emails}"
+
+                    echo "loading BuildVersion script files ${baseScriptsPath}BuildVersion.groovy"
                     def buildVersion = load baseScriptsPath + "BuildVersion.groovy"
+
+                    echo "loading GitOperation script files ${baseScriptsPath}GitOperation.groovy"
+                    def writeConfigFiles = load baseScriptsPath + "WriteConfigFiles.groovy"
+                    def gitOperation = load baseScriptsPath + "GitOperation.groovy"
                     def startRelease = load baseScriptsPath + "startRelease.groovy"
                     def endRelease = load baseScriptsPath + "endRelease.groovy"
                     def updateRelease = load baseScriptsPath + "updateRelease.groovy"
+                    if (params.jdk_11 == 'Yes') {
+                        env.JAVA_HOME = "/usr/lib/jvm/java-11-openjdk-amd64/"
+                        sh "export JAVA_HOME=$env.JAVA_HOME"
+                    }
 
                     if (params.choice == 'Start-Release') {
                         for (gitRepo in gitRepos) {
                             startRelease.startRelease(params.source, params.target, params.debugmode, gitOperation, buildVersion, gitRepo)
                         }
                     } else if (params.choice == 'End-Release') {
+
                         for (gitRepo in gitRepos) {
                             endRelease.endRelease(params.source, params.target, params.debugmode, gitOperation, buildVersion, gitRepo)
                         }
-                    }else if (params.choice == "Update-Release") {
+                    } else if (params.choice == "Update-Release") {
                         for (gitRepo in gitRepos) {
-                            updateRelease.updateRelease(gitOperation, gitRepo)
+                            updateRelease.updateRelease(gitOperation, gitRepo, buildVersion)
                         }
-                    }
+                    } else if (params.choice == "Update-Shared-Version")
+                        for (gitRepo in gitRepos) {
+                            writeConfigFiles.updateSharedVersion(gitOperation, gitRepo, buildVersion, buildVersion, buildVersion)
+                        }
                 }
+
             } // step ends
+
         }  // stage ends
     }
 }

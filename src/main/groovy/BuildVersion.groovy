@@ -1,4 +1,3 @@
-
 /**
  * This method calculates the release version to input in release-start command.
  * Release version logic is simple - it is current version without '-SNAPSHOT'
@@ -9,6 +8,7 @@ def getReleaseVersion(String currentVersion) {
     echo "Calculating next release version from current version ${currentVersion}"
     for (int i = 0; i < currentVersion.size(); i++) {
         if (currentVersion[i] == "-") {
+            //0.0.1 or 0.1
             return currentVersion.substring(0, i)
         }
     }
@@ -50,15 +50,15 @@ def getNextDevelopmentVersion(String currentVersion) {
         } else if (releaseVersion == 1) {
             values[1] = values[1] + 1
         } else if (releaseVersion == 2) {
-            if(values.size() == 3){
+            if (values.size() == 3) {
                 values[2] = values[2] + 1
-            }else{
+            } else {
                 echo "Wrong release version pattern specified inside jgit.version file."
             }
         }
-        if(values.size() == 3){
+        if (values.size() == 3) {
             return "${values[0]}.${values[1]}.${values[2]}-SNAPSHOT"
-        }else{
+        } else {
             return "${values[0]}.${values[1]}-SNAPSHOT"
         }
     }
@@ -67,6 +67,41 @@ def getNextDevelopmentVersion(String currentVersion) {
     }
     //if jgit.version file is not found in the root direction then this function returns the error
     //and pipeline would fail
+}
+
+def calculateCurrentTagForRelease(String extractedVersion) {
+    echo "Calculating next tag version from ${extractedVersion}"
+    return "release-hgw-${extractedVersion}"
+}
+
+def calculateNextTagForRelease(String extractedVersion) {
+    echo "Calculating next tag version from ${extractedVersion}"
+    def intermediateResult = extractedVersion + "."
+    //0.0.1. or O.1.
+    def values = []
+    def start = 0
+    def end = 0
+    for (element in intermediateResult) {
+        if (element == '.') {
+            def additionValue = intermediateResult.substring(start, end).toInteger()
+            values.add(additionValue)
+            start = end + 1
+        }
+        end = end + 1
+    }
+    try {
+        values[values.size() - 1] = values[values.size() - 1] + 1
+        if (values.size() == 3) {
+            echo "---New tag version is ${values[0]}.${values[1]}.${values[2]} ---"
+            return "release-hgw-${values[0]}.${values[1]}.${values[2]}"
+        } else {
+            echo "---New tag version is ${values[0]}.${values[1]}---"
+            return "release-hgw-${values[0]}.${values[1]}"
+        }
+    }
+    catch (exception) {
+        echo "${exception}"
+    }
 }
 
 /**

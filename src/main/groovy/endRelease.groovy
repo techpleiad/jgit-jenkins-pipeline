@@ -16,7 +16,7 @@ def endRelease(String source, String target, boolean debugmode,def gitOperation,
             withMaven(maven: 'JGIT_PIPELINE_MAVEN_PLUGIN') {
 
                 withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
-                    sh "mvn jgitflow:release-finish -DallowSnapshots -DperformRelease=false -DpushReleases=true -Dusername=$USERNAME -Dpassword=$PASSWORD"
+                    sh "mvn jgitflow:release-finish -DallowSnapshots -Dmaven.repo.local=/var/lib/jenkins/mvn_hgw/.m2/repository/hgw-test -DperformRelease=false -DpushReleases=true -Dusername=$USERNAME -Dpassword=$PASSWORD"
                     // def output = sh returnStdout: true, script: "mvn jgitflow:release-finish -DallowSnapshots -DperformRelease=false -DpushReleases=true -Dusername=root -Dpassword=Passw0rd"
                     //echo output
                 }

@@ -1,5 +1,3 @@
-
-
 /**
  * This function checkouts the code from git using git pipeline plugin
  * @param repo
@@ -11,6 +9,18 @@ def gitCheckout(String repo, String branchName) {
               branches                         : [[name: branchName]],
               doGenerateSubmoduleConfigurations: false,
               extensions                       : [[$class: 'CleanBeforeCheckout'], [$class: 'LocalBranch'], [$class: 'PruneStaleBranch']],
+              submoduleCfg                     : [],
+              userRemoteConfigs                : [[credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', url: repo]]])
+    //add your own git creds thing
+    // add extension of pruning - https://stackoverflow.com/questions/48936345/how-can-i-execute-code-on-prune-stale-remote-tracking-branches-in-jenkins
+    // SCM steps: https://www.jenkins.io/doc/pipeline/steps/workflow-scm-step/
+}
+
+def gitCheckoutWithoutCleaning(String repo, String branchName) {
+    checkout([$class                           : 'GitSCM',
+              branches                         : [[name: branchName]],
+              doGenerateSubmoduleConfigurations: false,
+              extensions                       : [[$class: 'LocalBranch']],
               submoduleCfg                     : [],
               userRemoteConfigs                : [[credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', url: repo]]])
     //add your own git creds thing
@@ -54,24 +64,24 @@ def getReleaseBranch() {
  */
 def checkCodeDifferenceBetweenGivenBranches(String source, String target, String isRelease) {
     def fileName
-    if(isRelease == 'release'){
+    if (isRelease == 'release') {
         fileName = sh returnStdout: true, script: "git diff --name-only remotes/origin/${source} remotes/${target}"
-    }else{
+    } else {
         fileName = sh returnStdout: true, script: "git diff --name-only remotes/origin/${source} remotes/origin/${target}"
     }
     if (fileName.trim() == "pom.xml") {
         def numAns
-        if(isRelease == 'release'){
+        if (isRelease == 'release') {
             numAns = sh returnStdout: true, script: "git diff --numstat remotes/origin/${source} remotes/${target}"
-        }else{
+        } else {
             numAns = sh returnStdout: true, script: "git diff --numstat remotes/origin/${source} remotes/origin/${target}"
         }
         def numOfLines = numAns.substring(0, 2).trim()
         if (numOfLines == '1') {
             def output
-            if(isRelease == 'release'){
+            if (isRelease == 'release') {
                 output = sh returnStdout: true, script: "git diff --unified=0 remotes/origin/${source} remotes/${target}"
-            }else{
+            } else {
                 output = sh returnStdout: true, script: "git diff --unified=0 remotes/origin/${source} remotes/origin/${target}"
             }
             def tag;
@@ -103,7 +113,7 @@ def getCurrentVersion() {
     echo "Getting current version"
     withMaven(maven: 'JGIT_PIPELINE_MAVEN_PLUGIN') {
         def currentVersion = sh(returnStdout: true,
-                script: 'mvn org.apache.maven.plugins:maven-help-plugin:3.1.0:evaluate -Dexpression=project.version -q -DforceStdout --batch-mode -U -e -Dsurefire.useFile=false | tail -n 1').trim()
+                script: 'mvn -Dmaven.repo.local=/var/lib/jenkins/mvn_hgw/.m2/repository/hgw-dev org.apache.maven.plugins:maven-help-plugin:3.1.0:evaluate -Dexpression=project.version -q -DforceStdout --batch-mode -U -e -Dsurefire.useFile=false | tail -n 1').trim()
         echo "Current version is ${currentVersion}"
         return currentVersion
     }
@@ -112,14 +122,14 @@ def getCurrentVersion() {
 /**
  * This method modifies the gitRepo link and injects it with the username and password
  */
-def injectGitRepoWithUserNamePassword(def gitRepo){
+def injectGitRepoWithUserNamePassword(def gitRepo) {
     def count = 0
     int start = 0
     def result
     for (start; start < gitRepo.length(); start = start + 1) {
         if (gitRepo[start] == '/') {
             count = count + 1
-            if(count == 2){
+            if (count == 2) {
                 break
             }
         }
@@ -131,10 +141,49 @@ def injectGitRepoWithUserNamePassword(def gitRepo){
     echo part1
     echo part2
     withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
-        result =  part1 + "${USERNAME}:${PASSWORD}@" + part2
+        result = part1 + "${USERNAME}:${PASSWORD}@" + part2
     }
     return result
-} 
+}
+
+def createTag(String tagVersion, def gitRepo) {
+    echo "New tag name calculated =${tagVersion}"
+    output = sh returnStdout: true, script: "git tag ${tagVersion}"
+    try {
+        withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'JGIT_PIPELINE_TARGET_REPOS_CREDS', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
+            def result = injectGitRepoWithUserNamePassword(gitRepo)
+            sh('git push --tags ' + result)
+        }
+    }
+    catch (exc) {
+        echo "Could not push tag"
+    }
+
+}
+
+
+def getLatestTag() {
+    echo "Getting Latest Tag"
+    def tag = sh returnStdout: true, script: "git for-each-ref --sort=-creatordate --format '%(refname)' 'refs/tags/release-hgw-*.*.*' --count=1"
+    if (tag.trim() == "") {
+        throw new Exception("Tag with pattern RELEASE-HGW-*.*.* not found")
+    }
+    def currentTag = tag.substring(10, tag.trim().size())
+    echo "Extracting current tag version numbers from  ${currentTag}"
+    def countOfHyphen = 0
+    def i = 0
+    for (i = 0; i < currentTag.trim().size(); i++) {
+        if (currentTag[i] == "-") {
+            countOfHyphen++
+        }
+        if (countOfHyphen == 2) {
+            break
+        }
+    }
+    echo "${currentTag.size()} and ${i}"
+    echo "${currentTag.substring(i + 1, currentTag.size())}"
+    return currentTag.substring(i + 1, currentTag.size())
+}
 
 return this
 
