@@ -2,13 +2,7 @@
 
 
 pipeline {
-
-    agent {
-        label {
-            label "hgw-jenkins-slave-1"
-            customWorkspace "/var/lib/jenkins/workspace/${env.JOB_NAME}"
-        }
-    }
+    agent any
     parameters {
         choice(name: 'choice', choices: ['Start-Release', 'End-Release', 'Update-Release', 'Update-Shared-Version'], description: 'Select Mode')
         booleanParam(name: 'debugmode', defaultValue: false, description: 'When debug mode is On, JGIT command will not be executed')
